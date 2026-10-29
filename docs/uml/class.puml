@@ -1,0 +1,354 @@
+@startuml class
+skinparam defaultFontName "DejaVu Sans"
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+title Діаграма класів — «Електронна таблиця» (ЛР1, варіант 8)
+
+package "LabCalculator.App (MAUI)" {
+  class Application <<MAUI>>
+  class ContentPage <<MAUI>>
+
+  class MauiProgram <<static>> {
+    + {static} CreateMauiApp() : MauiApp
+    - {static} OnWindowClosing(sender : AppWindow, args : AppWindowClosingEventArgs)
+  }
+
+  class App {
+    - _mainPage : MainPage {readOnly}
+    + App(mainPage : MainPage)
+    # CreateWindow(activationState : IActivationState?) : Window
+  }
+
+  class MainPage {
+    - _controller : TableController {readOnly}
+    - _displayMode : DisplayMode
+    - _selectedAddress : string?
+    - _editingAddress : string?
+    - _currentFilePath : string?
+    - _hasUnsavedChanges : bool
+    - _isBusy : bool
+    + MainPage(controller : TableController)
+    + /NeedsCloseConfirmation : bool {readOnly}
+    + ConfirmCloseAsync() : Task<bool>
+    .. обробники меню й кнопок (спільні) ..
+    - OnNewTableClicked()
+    - OnOpenClicked()
+    - OnSaveClicked()
+    - OnSaveAsClicked()
+    - OnExitClicked()
+    - OnInsertRowClicked()
+    - OnAppendRowClicked()
+    - OnDeleteRowClicked()
+    - OnInsertColumnClicked()
+    - OnAppendColumnClicked()
+    - OnDeleteColumnClicked()
+    - OnToggleModeClicked()
+    - OnHelpClicked()
+    - OnAboutClicked()
+    .. редагування клітинок ..
+    - OnCellFocused()
+    - OnCellUnfocused()
+    - OnCellCompleted()
+    - OnFormulaCompleted()
+    - OnFormulaUnfocused()
+    - CommitPendingEdits()
+    - ApplyExpression(address : string, text : string) : bool
+    .. відображення ..
+    - RunCommandAsync(command : Func<Task>) : Task
+    - RebuildGrid()
+    - UpdateGridSize()
+    - RefreshGrid()
+    - UpdateTitle()
+  }
+
+  class HelpPage {
+    + HelpPage()
+    - OnCloseClicked()
+  }
+
+  class TableFiles <<static>> {
+    + {static} Extension : string = ".json" {readOnly}
+    + {static} /SaveFolder : string {readOnly}
+    + {static} PickerFileType : FilePickerFileType {readOnly}
+    + {static} IsValidName(name : string) : bool
+    + {static} BuildSavePath(name : string) : string
+    + {static} RunFileOperation(operation : Action, path : string) : string?
+    - {static} GetErrorMessage(exception : Exception, path : string) : string
+  }
+
+  enum DisplayMode <<enumeration>> {
+    Expression
+    Value
+  }
+}
+
+package "LabCalculator.Core" {
+  class TableController {
+    + {static} DefaultRows : int = 10 {readOnly}
+    + {static} DefaultColumns : int = 6 {readOnly}
+    - {static} CycleError : string = "Циклічне посилання" {readOnly}
+    - _graph : DependencyGraph
+    - _parser : ExpressionParser {readOnly}
+    - _storage : ITableStorage {readOnly}
+    - _pendingCycleCells : Dictionary<string, IReadOnlyList<string>>
+    + Table : Table «get»
+    + TableController(storage : ITableStorage)
+    + SetCellExpression(address : string, text : string) : bool
+    + InsertRow(row : int)
+    + DeleteRow(row : int)
+    + InsertColumn(column : int)
+    + DeleteColumn(column : int)
+    + NewTable(rows : int, columns : int)
+    + Open(path : string)
+    + Save(path : string)
+    - {static} ToParsable(text : string) : string?
+    - WriteCell(address : string, cell : Cell, text : string, result : ParseResult?, references : IReadOnlyList<string>)
+    - Evaluate(cell : Cell, tree : IParseTree)
+    - EvaluateCell(address : string)
+    - RecalculateDependents(address : string)
+    - ChangeStructure(change : Action, shifter : ReferenceShifter)
+    - RetryPendingCycleCells()
+    - RebuildAll()
+    - AddLoadedCell(address : string, trees : Dictionary<string, IParseTree>)
+  }
+
+  package "Models" {
+    interface ICellValueProvider {
+      + GetCellValue(address : string) : BigInteger
+    }
+
+    class Table {
+      + {static} MaxSize : int = 200 {readOnly}
+      - _cells : Dictionary<string, Cell> {readOnly}
+      + RowCount : int «get»
+      + ColumnCount : int «get»
+      ~ Table(rows : int, columns : int)
+      + GetCell(address : string) : Cell
+      + Contains(address : string) : bool
+      + AllAddresses() : IEnumerable<string>
+      + GetCellValue(address : string) : BigInteger
+      ~ InsertRow(row : int)
+      ~ DeleteRow(row : int)
+      ~ InsertColumn(column : int)
+      ~ DeleteColumn(column : int)
+      - MoveCell(fromColumn : int, fromRow : int, toColumn : int, toRow : int)
+      - {static} CheckIndex(index : int, maxIndex : int, parameterName : string)
+    }
+
+    class Cell {
+      + Expression : string «get»
+      + Value : BigInteger? «get»
+      + Error : string? «get»
+      + /IsEmpty : bool {readOnly}
+      ~ Cell()
+      ~ SetExpression(text : string)
+      ~ SetResult(value : BigInteger)
+      ~ SetError(message : string)
+    }
+
+    class CellAddress <<static>> {
+      - {static} LettersCount : int = 26 {readOnly}
+      + {static} Parse(address : string) : (int Column, int Row)
+      + {static} TryParse(address : string, out column : int, out row : int) : bool
+      + {static} ToAddress(column : int, row : int) : string
+      + {static} ColumnName(column : int) : string
+      - {static} CountColumnLetters(address : string) : int
+      - {static} TryReadColumnNumber(address : string, lettersEnd : int, out columnNumber : long) : bool
+      - {static} TryReadRowNumber(address : string, lettersEnd : int, out rowNumber : long) : bool
+    }
+
+    class EvaluationException {
+      + EvaluationException(message : string)
+    }
+
+    class Exception <<.NET>>
+  }
+
+  package "Dependencies" {
+    class DependencyGraph {
+      - _dependsOn : Dictionary<string, HashSet<string>> {readOnly}
+      - _usedBy : Dictionary<string, HashSet<string>> {readOnly}
+      + SetDependencies(cell : string, references : IEnumerable<string>)
+      + WouldCreateCycle(cell : string, references : IEnumerable<string>) : bool
+      + GetCellsToRecalculate(cell : string) : IReadOnlyList<string>
+      + GetEvaluationOrder(cells : IEnumerable<string>) : IReadOnlyList<string>
+      - RemoveOutgoingEdges(cell : string)
+      - CollectDependents(cell : string) : HashSet<string>
+    }
+  }
+
+  package "Parsing" {
+    class ExpressionParser {
+      + {static} MaxExpressionLength : int = 500 {readOnly}
+      + Parse(expression : string) : ParseResult
+      + GetReferences(tree : IParseTree) : IReadOnlyList<string>
+      ~ {static} ParseWithoutLengthLimit(expression : string) : ParseResult
+      - {static} RunAntlr(expression : string) : ParseResult
+    }
+
+    class StackGuard <<private>> {
+      + EnterEveryRule(context : ParserRuleContext)
+    }
+
+    class ParseResult {
+      + Tree : IParseTree? {readOnly}
+      + ErrorMessage : string? {readOnly}
+      + ErrorPosition : int? {readOnly}
+      + /IsSuccess : bool {readOnly}
+      - ParseResult(tree : IParseTree?, errorMessage : string?, errorPosition : int?)
+      + {static} Success(tree : IParseTree) : ParseResult
+      + {static} Failure(message : string, position : int) : ParseResult
+    }
+
+    class ThrowExceptionErrorListener <<internal>> {
+      - _lexerError : SyntaxErrorException?
+      + SyntaxError(..., offendingSymbol : IToken, ..., message : string, ...)
+      + SyntaxError(..., offendingSymbol : int, ..., message : string, ...)
+      + ThrowIfLexerError()
+    }
+
+    class ReferenceShifter <<internal>> {
+      + {static} DeletedReference : string = "#ПОСИЛАННЯ!" {readOnly}
+      - _isRow : bool {readOnly}
+      - _isInsert : bool {readOnly}
+      - _index : int {readOnly}
+      - ReferenceShifter(isRow : bool, isInsert : bool, index : int)
+      + {static} RowInserted(row : int) : ReferenceShifter
+      + {static} RowDeleted(row : int) : ReferenceShifter
+      + {static} ColumnInserted(column : int) : ReferenceShifter
+      + {static} ColumnDeleted(column : int) : ReferenceShifter
+      + Shift(expression : string) : string
+      - {static} Tokenize(expression : string) : IList<IToken>
+      - MoveAddress(reference : string) : string?
+    }
+
+    class SyntaxErrorException <<internal>> {
+      + Position : int {readOnly}
+      + SyntaxErrorException(message : string, position : int)
+    }
+
+    class Evaluator {
+      - {static} MaxExponent : int = 10000 {readOnly}
+      + {static} MaxResultBits : int = 100000 {readOnly}
+      - _cells : ICellValueProvider {readOnly}
+      + Evaluator(cells : ICellValueProvider)
+      + Evaluate(tree : IParseTree) : BigInteger
+      + Visit(tree : IParseTree) : BigInteger
+      + VisitCompileUnit(context : CompileUnitContext) : BigInteger
+      + VisitParenthesizedExpr(context : ParenthesizedExprContext) : BigInteger
+      + VisitAdditiveExpr(context : AdditiveExprContext) : BigInteger
+      + VisitMultiplicativeExpr(context : MultiplicativeExprContext) : BigInteger
+      + VisitExponentialExpr(context : ExponentialExprContext) : BigInteger
+      + VisitUnaryExpr(context : UnaryExprContext) : BigInteger
+      + VisitIncDecExpr(context : IncDecExprContext) : BigInteger
+      + VisitNumberExpr(context : NumberExprContext) : BigInteger
+      + VisitIdentifierExpr(context : IdentifierExprContext) : BigInteger
+      + VisitDeletedReferenceExpr(context : DeletedReferenceExprContext) : BigInteger
+      - WalkLeft(context : ExpressionContext) : BigInteger
+      - WalkRight(context : ExpressionContext) : BigInteger
+      - {static} CheckSize(value : BigInteger) : BigInteger
+    }
+
+    abstract class "LabCalculatorBaseVisitor<BigInteger>" as BaseVisitor <<ANTLR>>
+    class BaseErrorListener <<ANTLR>>
+    interface "IAntlrErrorListener<int>" as LexerErrL <<ANTLR>>
+    interface IParseTreeListener <<ANTLR>>
+    class LabCalculatorLexer <<ANTLR>>
+    class LabCalculatorParser <<ANTLR>>
+  }
+
+  package "Storage" {
+    interface ITableStorage {
+      + Save(table : Table, path : string)
+      + Load(path : string) : Table
+    }
+    class JsonTableStorage {
+      - {static} FormatName : string = "LabCalculator" {readOnly}
+      - {static} FormatVersion : int = 1 {readOnly}
+      + Save(table : Table, path : string)
+      + Load(path : string) : Table
+      - {static} DeserializeFile(json : string) : TableFile
+      - {static} CheckHeader(file : TableFile)
+      - {static} FillCells(table : Table, cells : Dictionary<string, string?>)
+      - {static} Corrupted(reason : string, inner : Exception?) : InvalidDataException
+    }
+    class TableFile <<record>> {
+      + Format : string
+      + Version : int
+      + Rows : int
+      + Columns : int
+      + Cells : Dictionary<string, string>
+    }
+  }
+}
+
+note bottom of Cell
+  ~ (internal): змінювати Table і Cell може лише код
+  LabCalculator.Core (TableController, JsonTableStorage).
+  MainPage отримує Table тільки для читання.
+  «get» — властивість з private set (клієнти лише читають).
+  Для тестів: InternalsVisibleTo("LabCalculator.Tests").
+end note
+
+note right of ICellValueProvider
+  порожня клітинка → 0;
+  клітинка з помилкою або
+  неіснуюча адреса →
+  EvaluationException
+end note
+
+' --- App ---
+App --|> Application
+App "1" --> "1" MainPage : _mainPage
+MauiProgram ..> JsonTableStorage : <<create>> (DI)
+MauiProgram ..> TableController : <<create>> (DI)
+MainPage --|> ContentPage
+HelpPage --|> ContentPage
+MainPage "1" --> "1" TableController : _controller
+MainPage --> "1" DisplayMode : _displayMode
+MainPage ..> HelpPage : <<create>>
+MainPage ..> TableFiles
+MainPage ..> CellAddress
+MainPage ..> Table : читає
+MainPage ..> Cell : читає
+
+' --- Core ---
+TableController "1" *-- "1" Table : Table
+TableController "1" *-- "1" DependencyGraph : _graph
+TableController "1" *-- "1" ExpressionParser : _parser
+TableController "1" --> "1" ITableStorage : _storage
+TableController ..> Evaluator : <<create>>
+TableController ..> ParseResult
+TableController ..> ReferenceShifter : <<use>>
+ReferenceShifter ..> LabCalculatorLexer : <<create>>
+ReferenceShifter ..> CellAddress
+TableController ..> EvaluationException : <<catch>>
+
+Table "1" *-- "1..*" Cell : _cells
+Table ..|> ICellValueProvider
+Table ..> CellAddress
+Table ..> EvaluationException : <<throw>>
+EvaluationException --|> Exception
+
+Evaluator "0..*" --> "1" ICellValueProvider : _cells
+Evaluator --|> BaseVisitor
+Evaluator ..> EvaluationException : <<throw>>
+
+ExpressionParser ..> LabCalculatorLexer : <<create>>
+ExpressionParser ..> LabCalculatorParser : <<create>>
+ExpressionParser ..> ThrowExceptionErrorListener : <<create>>
+ExpressionParser ..> SyntaxErrorException : <<catch>>
+ExpressionParser ..> ParseResult
+ExpressionParser +-- StackGuard
+StackGuard ..|> IParseTreeListener
+ThrowExceptionErrorListener --|> BaseErrorListener
+ThrowExceptionErrorListener ..|> LexerErrL
+ThrowExceptionErrorListener ..> SyntaxErrorException : <<throw>>
+SyntaxErrorException --|> Exception
+
+JsonTableStorage ..|> ITableStorage
+JsonTableStorage +-- TableFile
+JsonTableStorage ..> Table : <<create>>
+JsonTableStorage ..> CellAddress
+ITableStorage ..> Table
+@enduml

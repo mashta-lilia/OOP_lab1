@@ -1,0 +1,78 @@
+@startuml use-case
+skinparam defaultFontName "DejaVu Sans"
+skinparam shadowing false
+top to bottom direction
+title Діаграма прецедентів — «Електронна таблиця» (ЛР1, варіант 8)
+
+actor "Користувач" as U
+
+rectangle "Електронна таблиця" {
+  usecase "Ввести вираз у клітинку" as Input
+  usecase "Перевірити синтаксис" as Syntax
+  usecase "Обчислити значення" as Calc
+  usecase "Перерахувати залежні клітинки" as Recalc
+  usecase "Показати помилку" as Error
+
+  usecase "Вставити рядок\n(перед вибраною клітинкою або в кінець)" as AddRow
+  usecase "Видалити рядок вибраної клітинки" as DelRow
+  usecase "Вставити стовпчик\n(перед вибраною клітинкою або в кінець)" as AddCol
+  usecase "Видалити стовпчик вибраної клітинки" as DelCol
+  usecase "Виправити посилання у виразах" as Shift
+  usecase "Підтвердити видалення" as Confirm
+
+  usecase "Створити нову таблицю" as New
+  usecase "Відкрити таблицю з файлу" as Open
+  usecase "Зберегти таблицю у файл" as Save
+  usecase "Зберегти таблицю як…" as SaveAs
+  usecase "Вийти з програми" as Exit
+  usecase "Запропонувати зберегти зміни" as AskSave
+
+  usecase "Перемкнути режим ВИРАЗ/ЗНАЧЕННЯ" as Mode
+  usecase "Переглянути довідку" as Help
+  usecase "Переглянути інформацію про програму" as About
+}
+
+U -- Input
+U -- AddRow
+U -- DelRow
+U -- AddCol
+U -- DelCol
+U -- New
+U -- Open
+U -- Save
+U -- SaveAs
+U -- Exit
+U -- Mode
+U -- Help
+U -- About
+
+Input ..> Syntax : <<include>>
+Input ..> Calc : <<include>>
+Input ..> Recalc : <<include>>
+AddRow ..> Shift : <<include>>
+AddCol ..> Shift : <<include>>
+DelRow ..> Shift : <<include>>
+DelCol ..> Shift : <<include>>
+Shift ..> Recalc : <<include>>
+DelRow <.. Confirm : <<extend>>\n[у рядку є дані]
+DelCol <.. Confirm : <<extend>>\n[у стовпчику є дані]
+Open ..> Syntax : <<include>>
+Open ..> Calc : <<include>>
+Recalc ..> Calc : <<include>>
+
+Save <.. SaveAs : <<extend>>\n[таблицю ще не збережено у файл]
+New <.. AskSave : <<extend>>\n[є незбережені зміни]
+Open <.. AskSave : <<extend>>\n[є незбережені зміни]
+Exit <.. AskSave : <<extend>>\n[є незбережені зміни]
+AskSave ..> Save : <<include>>
+
+Syntax <.. Error : <<extend>>\n[вираз некоректний або задовгий]
+Calc <.. Error : <<extend>>\n[ділення на 0, від'ємний або завеликий степінь,\nзавеликий результат, посилання на клітинку\nз помилкою, на неіснуючу або видалену клітинку]
+Input <.. Error : <<extend>>\n[циклічне посилання — вираз не приймається]
+Open <.. Error : <<extend>>\n[файл пошкоджений\nабо має неправильний формат]
+Save <.. Error : <<extend>>\n[не вдалося записати файл]
+DelRow <.. Error : <<extend>>\n[залишився один рядок]
+DelCol <.. Error : <<extend>>\n[залишився один стовпчик]
+AddRow <.. Error : <<extend>>\n[у таблиці вже 200 рядків]
+AddCol <.. Error : <<extend>>\n[у таблиці вже 200 стовпчиків]
+@enduml

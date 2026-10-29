@@ -1,0 +1,130 @@
+@startuml sequence
+skinparam defaultFontName "DejaVu Sans"
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+title Діаграма послідовності — «Ввести вираз у клітинку»
+
+actor "Користувач" as U
+participant ":MainPage" as UI
+participant ":TableController" as C
+participant ":ExpressionParser" as P
+participant ":DependencyGraph" as G
+participant ":Evaluator" as E
+participant ":Table" as T
+participant "b1 : Cell" as B1
+participant "x : Cell" as X
+
+U -> UI : вводить "C1 - 5" у клітинку B1, Enter
+activate UI
+UI -> UI : CommitPendingEdits()
+opt текст відрізняється від b1.Expression
+UI -> C : SetCellExpression("B1", "C1 - 5")
+activate C
+
+C -> T : GetCell("B1")
+activate T
+T --> C : b1
+deactivate T
+C -> C : ToParsable(text)
+note right of C : обрізає пробіли; початковий "="\nзамінюється пробілом
+
+alt вираз порожній (або лише "=")
+  C -> B1 : SetExpression("")
+  C -> G : SetDependencies("B1", [])
+  C -> C : RecalculateDependents("B1")
+  C --> UI : true
+
+else вираз не порожній
+  C -> P : Parse("C1 - 5")
+  activate P
+  note right of P : ThrowExceptionErrorListener кидає\nSyntaxErrorException з першою помилкою;\nвираз довший за 500 символів — помилка
+  P --> C : result : ParseResult
+  deactivate P
+
+  alt result.IsSuccess = false (синтаксична помилка)
+    C -> B1 : SetExpression("C1 - 5")
+    C -> G : SetDependencies("B1", [])
+    C -> B1 : SetError("Синтаксична помилка в позиції N: …")
+    C -> C : RecalculateDependents("B1")
+    note right of C : залежні клітинки отримують помилку\n(як у фрагменті loop нижче)
+    C --> UI : true
+
+  else result.IsSuccess = true
+    C -> P : GetReferences(result.Tree)
+    activate P
+    P --> C : ["C1"]
+    deactivate P
+
+    C -> G : WouldCreateCycle("B1", ["C1"])
+    activate G
+    G --> C : hasCycle
+    deactivate G
+
+    alt hasCycle = true
+      C --> UI : false (нічого не змінено)
+
+    else hasCycle = false
+      C -> B1 : SetExpression("C1 - 5")
+      C -> G : SetDependencies("B1", ["C1"])
+
+      create E
+      C -> E : <<create>> Evaluator(table)
+      C -> E : Evaluate(result.Tree)
+      activate E
+      E -> T : GetCellValue("C1")
+      activate T
+      T --> E : значення (порожня = 0) або throw EvaluationException
+      deactivate T
+      alt обчислення успішне
+        E --> C : value
+        C -> B1 : SetResult(value)
+      else C1 з помилкою, ділення на 0, завеликий степінь чи результат
+        E --> C : throw EvaluationException
+        C -> B1 : SetError(повідомлення)
+      end
+      deactivate E
+
+      C -> C : RecalculateDependents("B1")
+      activate C
+      C -> G : GetCellsToRecalculate("B1")
+      activate G
+      G --> C : dependents (у порядку обчислення)
+      deactivate G
+      loop для кожної x у dependents
+        opt Table.Contains(x)
+          C -> T : GetCell(x)
+          C -> P : Parse(ToParsable(x.Expression))
+          activate P
+          P --> C : дерево
+          deactivate P
+          note right of C : для кожної клітинки\nстворюється новий Evaluator(table)
+          C -> E : Evaluate(дерево)
+          activate E
+          E -> T : GetCellValue(...)
+          T --> E : значення
+          E --> C : value або throw EvaluationException
+          deactivate E
+          C -> X : SetResult(value) або SetError(повідомлення)
+        end
+      end
+      deactivate C
+      C -> C : RetryPendingCycleCells()
+      note right of C : клітинки з циклом, завантажені з файлу,\nперевіряються ще раз
+      C --> UI : true
+    end
+  end
+end
+deactivate C
+end
+
+alt SetCellExpression повернув false
+  UI -> UI : RefreshGrid()
+  note right of UI : у клітинці знову старий вираз
+  UI --> U : діалог "Циклічне посилання — вираз не прийнято"
+else true
+  UI -> UI : RefreshGrid()
+  note right of UI : перемальовує лише змінені клітинки;\nпоказує Expression або Value залежно\nвід режиму ВИРАЗ/ЗНАЧЕННЯ
+  UI --> U : показує нові значення або помилку
+end
+deactivate UI
+@enduml

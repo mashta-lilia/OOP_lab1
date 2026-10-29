@@ -1,0 +1,47 @@
+# Налаштування стилю коду (Visual Studio, Rider, dotnet format)
+# за вимогами «C#: вимоги і рекомендації з написання коду».
+root = true
+
+# Відступи — символом табуляції (ширина 4), а не пробілами.
+[*.{cs,xaml}]
+indent_style = tab
+indent_size = 4
+tab_width = 4
+
+[*.cs]
+# Фігурна дужка кожного блоку — з нового рядка.
+csharp_new_line_before_open_brace = all
+
+# Фігурні дужки навіть для однорядкових if / else / for / foreach / while.
+csharp_prefer_braces = true
+dotnet_diagnostic.IDE0011.severity = suggestion
+
+# Константи — PascalCase (MaxSize). Це правило стоїть першим і має модифікатор const,
+# тому для приватних констант воно важливіше за правило для приватних полів нижче.
+dotnet_naming_rule.private_constants_pascal_case.symbols = private_constants
+dotnet_naming_rule.private_constants_pascal_case.style = pascal_case
+dotnet_naming_rule.private_constants_pascal_case.severity = suggestion
+
+dotnet_naming_symbols.private_constants.applicable_kinds = field
+dotnet_naming_symbols.private_constants.applicable_accessibilities = private
+dotnet_naming_symbols.private_constants.required_modifiers = const
+
+dotnet_naming_style.pascal_case.capitalization = pascal_case
+
+# Приватні поля (зокрема readonly і static) — «_» і camelCase: _graph, _isBusy.
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_camel_case
+dotnet_naming_rule.private_fields_underscore.severity = suggestion
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.underscore_camel_case.required_prefix = _
+dotnet_naming_style.underscore_camel_case.capitalization = camel_case
+
+# Згенерований ANTLR код і шаблонний код платформ MAUI не перевіряємо.
+[**/Generated/**]
+generated_code = true
+
+[LabCalculator.App/Platforms/**]
+generated_code = true

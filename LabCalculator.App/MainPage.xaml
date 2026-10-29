@@ -1,0 +1,132 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+			 x:Class="LabCalculator.App.MainPage"
+			 Title="Електронна таблиця">
+
+	<!-- Головне меню. Пункти меню і кнопки панелі викликають ті самі обробники. -->
+	<ContentPage.MenuBarItems>
+		<MenuBarItem Text="Файл">
+			<MenuFlyoutItem Text="Нова таблиця" Clicked="OnNewTableClicked">
+				<MenuFlyoutItem.KeyboardAccelerators>
+					<KeyboardAccelerator Modifiers="Ctrl" Key="N" />
+				</MenuFlyoutItem.KeyboardAccelerators>
+			</MenuFlyoutItem>
+			<MenuFlyoutItem Text="Відкрити…" Clicked="OnOpenClicked">
+				<MenuFlyoutItem.KeyboardAccelerators>
+					<KeyboardAccelerator Modifiers="Ctrl" Key="O" />
+				</MenuFlyoutItem.KeyboardAccelerators>
+			</MenuFlyoutItem>
+			<MenuFlyoutItem Text="Зберегти" Clicked="OnSaveClicked">
+				<MenuFlyoutItem.KeyboardAccelerators>
+					<KeyboardAccelerator Modifiers="Ctrl" Key="S" />
+				</MenuFlyoutItem.KeyboardAccelerators>
+			</MenuFlyoutItem>
+			<MenuFlyoutItem Text="Зберегти як…" Clicked="OnSaveAsClicked">
+				<MenuFlyoutItem.KeyboardAccelerators>
+					<KeyboardAccelerator Modifiers="Ctrl,Shift" Key="S" />
+				</MenuFlyoutItem.KeyboardAccelerators>
+			</MenuFlyoutItem>
+			<MenuFlyoutSeparator />
+			<MenuFlyoutItem Text="Вихід" Clicked="OnExitClicked" />
+		</MenuBarItem>
+		<MenuBarItem Text="Таблиця">
+			<MenuFlyoutItem Text="Вставити рядок перед вибраною клітинкою" Clicked="OnInsertRowClicked" />
+			<MenuFlyoutItem Text="Додати рядок у кінець" Clicked="OnAppendRowClicked" />
+			<MenuFlyoutItem Text="Видалити рядок вибраної клітинки" Clicked="OnDeleteRowClicked" />
+			<MenuFlyoutSeparator />
+			<MenuFlyoutItem Text="Вставити стовпчик перед вибраною клітинкою" Clicked="OnInsertColumnClicked" />
+			<MenuFlyoutItem Text="Додати стовпчик у кінець" Clicked="OnAppendColumnClicked" />
+			<MenuFlyoutItem Text="Видалити стовпчик вибраної клітинки" Clicked="OnDeleteColumnClicked" />
+		</MenuBarItem>
+		<MenuBarItem Text="Вигляд">
+			<MenuFlyoutItem Text="Перемкнути режим (ВИРАЗ / ЗНАЧЕННЯ)" Clicked="OnToggleModeClicked" />
+		</MenuBarItem>
+		<MenuBarItem Text="Довідка">
+			<MenuFlyoutItem Text="Довідка" Clicked="OnHelpClicked" />
+			<MenuFlyoutItem Text="Про програму" Clicked="OnAboutClicked" />
+		</MenuBarItem>
+	</ContentPage.MenuBarItems>
+
+	<!-- Сторінка створюється раніше за ресурси App.xaml, тому стиль кнопок оголошено тут. -->
+	<ContentPage.Resources>
+		<Style x:Key="ToolbarButton" TargetType="Button">
+			<Setter Property="BackgroundColor" Value="{AppThemeBinding Light=#512BD4, Dark=#AC99EA}" />
+			<Setter Property="TextColor" Value="{AppThemeBinding Light=White, Dark=#242424}" />
+			<Setter Property="CornerRadius" Value="6" />
+			<Setter Property="Padding" Value="12,6" />
+			<Setter Property="Margin" Value="0,0,6,6" />
+			<Setter Property="MinimumHeightRequest" Value="36" />
+			<Setter Property="FontSize" Value="14" />
+		</Style>
+	</ContentPage.Resources>
+
+	<Grid RowDefinitions="Auto,Auto,*,Auto" Padding="10" RowSpacing="8">
+
+		<FlexLayout Grid.Row="0" Wrap="Wrap" AlignItems="Center">
+			<Button Text="Нова" Style="{StaticResource ToolbarButton}" Clicked="OnNewTableClicked"
+					ToolTipProperties.Text="Створити нову таблицю" />
+			<Button Text="Відкрити" Style="{StaticResource ToolbarButton}" Clicked="OnOpenClicked"
+					ToolTipProperties.Text="Відкрити таблицю з файлу" />
+			<Button Text="Зберегти" Style="{StaticResource ToolbarButton}" Clicked="OnSaveClicked"
+					ToolTipProperties.Text="Зберегти таблицю у файл" />
+			<Button Text="+ Рядок" Style="{StaticResource ToolbarButton}" Clicked="OnInsertRowClicked"
+					ToolTipProperties.Text="Вставити рядок перед вибраною клітинкою (якщо її не вибрано — у кінець)" />
+			<Button Text="− Рядок" Style="{StaticResource ToolbarButton}" Clicked="OnDeleteRowClicked"
+					ToolTipProperties.Text="Видалити рядок вибраної клітинки (якщо її не вибрано — останній)" />
+			<Button Text="+ Стовпчик" Style="{StaticResource ToolbarButton}" Clicked="OnInsertColumnClicked"
+					ToolTipProperties.Text="Вставити стовпчик перед вибраною клітинкою (якщо її не вибрано — у кінець)" />
+			<Button Text="− Стовпчик" Style="{StaticResource ToolbarButton}" Clicked="OnDeleteColumnClicked"
+					ToolTipProperties.Text="Видалити стовпчик вибраної клітинки (якщо її не вибрано — останній)" />
+			<Button x:Name="btnMode" Style="{StaticResource ToolbarButton}" Clicked="OnToggleModeClicked" />
+			<Button Text="Довідка" Style="{StaticResource ToolbarButton}" Clicked="OnHelpClicked"
+					ToolTipProperties.Text="Як користуватися програмою" />
+		</FlexLayout>
+
+		<Grid Grid.Row="1" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+			<Label x:Name="lblSelectedAddress"
+				   Grid.Row="0"
+				   Grid.Column="0"
+				   Text="—"
+				   FontAttributes="Bold"
+				   FontSize="16"
+				   HorizontalTextAlignment="Center"
+				   VerticalTextAlignment="Center" />
+			<Entry x:Name="txtFormula"
+				   Grid.Row="0"
+				   Grid.Column="1"
+				   Placeholder="Виберіть клітинку і введіть вираз, наприклад: inc(A1) + 2 ^ 3"
+				   IsEnabled="False"
+				   Completed="OnFormulaCompleted"
+				   Unfocused="OnFormulaUnfocused" />
+
+			<Label Grid.Row="1"
+				   Grid.Column="0"
+				   Text="Значення:"
+				   LineBreakMode="NoWrap"
+				   HorizontalTextAlignment="Center"
+				   VerticalTextAlignment="Center" />
+			<Entry x:Name="txtValue"
+				   Grid.Row="1"
+				   Grid.Column="1"
+				   IsReadOnly="True"
+				   Placeholder="Повне значення або текст помилки вибраної клітинки" />
+		</Grid>
+
+		<!-- Заголовки і клітинки таблиці створюються в коді (MainPage.Grid.cs) -->
+		<ScrollView Grid.Row="2" Orientation="Both">
+			<Grid x:Name="grdTable"
+				  ColumnSpacing="1"
+				  RowSpacing="1"
+				  HorizontalOptions="Start"
+				  VerticalOptions="Start"
+				  BackgroundColor="{AppThemeBinding Light=#C8C8C8, Dark=#404040}" />
+		</ScrollView>
+
+		<Label x:Name="lblStatus"
+			   Grid.Row="3"
+			   FontSize="13"
+			   LineBreakMode="TailTruncation" />
+	</Grid>
+
+</ContentPage>

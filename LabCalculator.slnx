@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="LabCalculator.App/LabCalculator.App.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
+  <Project Path="LabCalculator.Core/LabCalculator.Core.csproj" />
+  <Project Path="LabCalculator.Tests/LabCalculator.Tests.csproj" />
+</Solution>

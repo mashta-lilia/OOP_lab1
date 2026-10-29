@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>LabCalculator.Core</RootNamespace>
+    <!-- CS3021: згенерований ANTLR-код позначено CLSCompliant -->
+    <NoWarn>$(NoWarn);CS3021</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Граматика лежить у проєкті для наочності; C#-код з неї згенеровано
+         скриптом tools/generate-parser.* у папку Parsing/Generated. -->
+    <None Include="Grammar\LabCalculator.g4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="LabCalculator.Tests" />
+  </ItemGroup>
+
+</Project>
